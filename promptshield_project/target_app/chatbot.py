@@ -92,7 +92,12 @@ def retrieve_docs(query: str, top_k: int = 2) -> List[Dict[str, str]]:
     
     # Sort by score and return top_k
     results.sort(key=lambda x: x["score"], reverse=True)
-    return results[:top_k]
+    if not results:
+        return []
+
+    best_score = results[0]["score"]
+    best_matches = [result for result in results if result["score"] == best_score]
+    return best_matches[:top_k]
 
 
 def _has_real_key(value: Optional[str]) -> bool:
@@ -274,7 +279,13 @@ def call_llm(messages: List[Dict[str, str]], tools: Optional[List[Dict]] = None)
             kwargs["tools"] = [_openai_tool_schema(tool) for tool in tools]
             kwargs["tool_choice"] = "auto"
         
-        response = client.chat.completions.create(**kwargs)
+        try:
+            response = client.chat.completions.create(**kwargs)
+        except Exception as exc:
+            if getattr(exc, "status_code", None) != 401:
+                raise
+            print("OpenAI authentication failed; using the local mock provider.")
+            return _mock_call_llm(messages)
         return {
             "content": response.choices[0].message.content,
             "tool_calls": response.choices[0].message.tool_calls
@@ -300,7 +311,13 @@ def call_llm(messages: List[Dict[str, str]], tools: Optional[List[Dict]] = None)
         if tools:
             kwargs["tools"] = [_anthropic_tool_schema(tool) for tool in tools]
         
-        response = client.messages.create(**kwargs)
+        try:
+            response = client.messages.create(**kwargs)
+        except Exception as exc:
+            if getattr(exc, "status_code", None) != 401:
+                raise
+            print("Anthropic authentication failed; using the local mock provider.")
+            return _mock_call_llm(messages)
         
         # Extract content and tool calls
         content = ""

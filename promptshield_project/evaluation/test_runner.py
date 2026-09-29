@@ -32,7 +32,7 @@ DEMO_USER_ID_HASH = hashlib.sha256(b"demo-user").hexdigest()[:12]
 
 def load_prompts(filepath: Path) -> List[Dict[str, Any]]:
     """Load prompts from JSON file."""
-    with open(filepath, "r") as f:
+    with open(filepath, "r", encoding="utf-8") as f:
         return json.load(f)
 
 
@@ -436,8 +436,16 @@ def run_test_suite(
     attack_prompts = load_prompts(ATTACK_PROMPTS_PATH)
     benign_prompts = load_prompts(BENIGN_PROMPTS_PATH)
     
-    if max_prompts:
-        attack_prompts = attack_prompts[:max_prompts]
+    if max_prompts is not None:
+        prompts_per_category = {}
+        limited_attack_prompts = []
+        for prompt in attack_prompts:
+            category = prompt["category"]
+            category_count = prompts_per_category.get(category, 0)
+            if category_count < max_prompts:
+                limited_attack_prompts.append(prompt)
+                prompts_per_category[category] = category_count + 1
+        attack_prompts = limited_attack_prompts
         benign_prompts = benign_prompts[:max_prompts]
     
     all_prompts = attack_prompts + benign_prompts

@@ -21,7 +21,7 @@
                     <div class="mb-3">
                         <label for="max_prompts" class="form-label">Max Prompts per Category (optional)</label>
                         <input type="number" class="form-control" name="max_prompts" id="max_prompts" min="1" placeholder="Leave empty for all prompts">
-                        <div class="form-text">Useful for quick testing. Each run tests 60 attack + 40 benign = 100 prompts.</div>
+                        <div class="form-text">Useful for quick testing. Each run tests 78 attack + 40 benign = 118 prompts.</div>
                     </div>
 
                     <button type="submit" class="btn btn-primary" id="run-btn">
@@ -44,7 +44,7 @@
                     <li class="mb-0"><i class="bi bi-check-circle" style="color: var(--success);"></i> Per-Category Breakdown</li>
                 </ul>
                 <div class="alert alert-info mb-0" style="font-size: 0.85rem;">
-                    This test runs ~200 prompts through the target app and may take a few minutes with a real API key.
+                    This test runs ~236 prompts through the target app and may take a few minutes with a real API key.
                 </div>
             </div>
         </div>
@@ -156,7 +156,9 @@
         const asrReductionPct = off.attacks > 0 ? (asrReduction / off.attacks * 100).toFixed(1) : 0;
         const leakageReduction = off.leakage - on.leakage;
         const overhead = on.avg_latency_ms - off.avg_latency_ms;
-        const overheadPct = off.avg_latency_ms > 0 ? (overhead / off.avg_latency_ms * 100).toFixed(1) : 0;
+        const overheadPct = off.avg_latency_ms > 0 ? Math.abs(overhead / off.avg_latency_ms * 100).toFixed(1) : '0.0';
+        const overheadDirection = overhead < 0 ? 'decrease' : 'increase';
+        const overheadSign = overhead > 0 ? '+' : '';
 
         let html = `
             <div class="row mb-4 g-3">
@@ -199,7 +201,7 @@
                 <ul class="mb-0 mt-2">
                     <li>Attack Success: ${asrReduction} fewer successful attacks (${asrReductionPct}% reduction)</li>
                     <li>Leakage: ${leakageReduction} fewer leakage incidents</li>
-                    <li>Processing Overhead: +${overhead.toFixed(1)}ms (${overheadPct}% increase)</li>
+                    <li>Processing Overhead: ${overheadSign}${overhead.toFixed(1)}ms (${overheadPct}% ${overheadDirection})</li>
                 </ul>
                 <div class="mt-2" style="font-size: 0.85rem;">
                     False positive rate isn't shown here since it needs a benign-only breakdown &mdash;

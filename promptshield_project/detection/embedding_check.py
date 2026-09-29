@@ -79,7 +79,7 @@ def load_attack_prompts() -> List[Dict]:
     """Load attack prompts from JSON file."""
     global _attack_prompts
     if _attack_prompts is None:
-        with open(ATTACK_PROMPTS_PATH, "r") as f:
+        with open(ATTACK_PROMPTS_PATH, "r", encoding="utf-8") as f:
             _attack_prompts = json.load(f)
     return _attack_prompts
 
@@ -91,23 +91,25 @@ def compute_attack_embeddings() -> np.ndarray:
     if _attack_embeddings is not None:
         return _attack_embeddings
     
-    # Try to load from cache
-    if EMBEDDINGS_CACHE_PATH.exists():
+    model = get_model()
+
+    # Cached vectors only match the real transformer model.
+    if EMBEDDINGS_CACHE_PATH.exists() and SentenceTransformer is not None:
         print("Loading cached attack embeddings...")
         _attack_embeddings = np.load(EMBEDDINGS_CACHE_PATH)
         return _attack_embeddings
     
     # Compute embeddings
     print("Computing attack embeddings...")
-    model = get_model()
     prompts = load_attack_prompts()
     texts = [p["prompt_text"] for p in prompts]
     
     _attack_embeddings = model.encode(texts, show_progress_bar=True, convert_to_numpy=True)
     
     # Cache for future use
-    np.save(EMBEDDINGS_CACHE_PATH, _attack_embeddings)
-    print(f"Cached embeddings to {EMBEDDINGS_CACHE_PATH}")
+    if SentenceTransformer is not None:
+        np.save(EMBEDDINGS_CACHE_PATH, _attack_embeddings)
+        print(f"Cached embeddings to {EMBEDDINGS_CACHE_PATH}")
     
     return _attack_embeddings
 
