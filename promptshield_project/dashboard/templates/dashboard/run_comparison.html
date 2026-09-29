@@ -1,0 +1,229 @@
+{% extends "dashboard/base.html" %}
+
+{% block title %}PromptShield - Comparison Test{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1><i class="bi bi-arrow-left-right"></i> Comparison Test</h1>
+    <a href="{% url 'index' %}" class="btn btn-outline-secondary">Back to Dashboard</a>
+</div>
+
+<div class="row g-3">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">Comparison Test Configuration</div>
+            <div class="card-body">
+                <p class="text-muted-sm">This runs the full test suite twice: once with protection <strong>OFF</strong> (baseline)
+                and once with protection <strong>ON</strong>, giving the before/after numbers used for evaluation.</p>
+
+                <form id="comparison-form" method="post">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="max_prompts" class="form-label">Max Prompts per Category (optional)</label>
+                        <input type="number" class="form-control" name="max_prompts" id="max_prompts" min="1" placeholder="Leave empty for all prompts">
+                        <div class="form-text">Useful for quick testing. Each run tests 60 attack + 40 benign = 100 prompts.</div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" id="run-btn">
+                        <i class="bi bi-arrow-left-right"></i> Run Comparison Test
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">What This Measures</div>
+            <div class="card-body">
+                <ul class="list-unstyled mb-3">
+                    <li class="mb-1"><i class="bi bi-check-circle" style="color: var(--success);"></i> Attack Success Rate (before/after)</li>
+                    <li class="mb-1"><i class="bi bi-check-circle" style="color: var(--success);"></i> False Positive Rate</li>
+                    <li class="mb-1"><i class="bi bi-check-circle" style="color: var(--success);"></i> Leakage Rate (before/after)</li>
+                    <li class="mb-1"><i class="bi bi-check-circle" style="color: var(--success);"></i> Processing Overhead</li>
+                    <li class="mb-0"><i class="bi bi-check-circle" style="color: var(--success);"></i> Per-Category Breakdown</li>
+                </ul>
+                <div class="alert alert-info mb-0" style="font-size: 0.85rem;">
+                    This test runs ~200 prompts through the target app and may take a few minutes with a real API key.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Progress Section -->
+<div class="row mt-3 g-3" id="progress-section" style="display: none;">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">Running Comparison Test&hellip;</div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="text-muted-sm">Phase 1: Protection OFF (Baseline)</label>
+                    <div class="progress" style="height: 22px;">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated bg-secondary" id="progress-off" role="progressbar" style="width: 0%">0%</div>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="text-muted-sm">Phase 2: Protection ON (Protected)</label>
+                    <div class="progress" style="height: 22px;">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" id="progress-on" role="progressbar" style="width: 0%; background-color: var(--accent);">0%</div>
+                    </div>
+                </div>
+                <p id="progress-text" class="text-muted-sm mb-0">Initializing...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Results Section -->
+<div class="row mt-3 g-3" id="results-section" style="display: none;">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">Comparison Results</div>
+            <div class="card-body">
+                <div id="comparison-results"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.getElementById('comparison-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const formData = new FormData(this);
+        const maxPrompts = formData.get('max_prompts') || null;
+
+        document.getElementById('comparison-form').style.display = 'none';
+        document.getElementById('results-section').style.display = 'none';
+        document.getElementById('progress-section').style.display = 'block';
+
+        try {
+            updateProgress('off', 10, 'Starting baseline test (protection OFF)...');
+
+            const response = await fetch('{% url "run_comparison" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: new URLSearchParams({
+                    'max_prompts': maxPrompts || '',
+                    'csrfmiddlewaretoken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                })
+            });
+
+            updateProgress('off', 100, 'Baseline complete!');
+            updateProgress('on', 100, 'Protected test complete!');
+
+            const data = await response.json();
+
+            if (data.success) {
+                showResults(data.results);
+            } else {
+                alert('Test failed: ' + (data.error || 'Unknown error'));
+                resetForm();
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Error running comparison: ' + err.message);
+            resetForm();
+        }
+    });
+
+    function updateProgress(phase, percent, text) {
+        const el = document.getElementById(phase === 'off' ? 'progress-off' : 'progress-on');
+        el.style.width = percent + '%';
+        el.textContent = percent + '%';
+        document.getElementById('progress-text').textContent = text;
+    }
+
+    function statRow(label, value, colorVar) {
+        const style = colorVar ? ` style="color: var(${colorVar});"` : '';
+        return `<tr><td>${label}</td><td${style}><strong>${value}</strong></td></tr>`;
+    }
+
+    function showResults(results) {
+        document.getElementById('progress-section').style.display = 'none';
+        document.getElementById('results-section').style.display = 'block';
+
+        const off = results.protection_off;
+        const on = results.protection_on;
+
+        const asrReduction = off.attack_success - on.attack_success;
+        const asrReductionPct = off.attacks > 0 ? (asrReduction / off.attacks * 100).toFixed(1) : 0;
+        const leakageReduction = off.leakage - on.leakage;
+        const overhead = on.avg_latency_ms - off.avg_latency_ms;
+        const overheadPct = off.avg_latency_ms > 0 ? (overhead / off.avg_latency_ms * 100).toFixed(1) : 0;
+
+        let html = `
+            <div class="row mb-4 g-3">
+                <div class="col-md-6">
+                    <h6 class="text-muted-sm text-uppercase" style="font-size: 0.75rem; letter-spacing: 0.03em;">Protection OFF (Baseline)</h6>
+                    <table class="table table-sm mb-0">
+                        <tbody>
+                            ${statRow('Total Tests', off.total)}
+                            ${statRow('Attacks', off.attacks)}
+                            ${statRow('Benign', off.benign)}
+                            ${statRow('Attack Success', off.attack_success, '--danger')}
+                            ${statRow('Leakage', off.leakage, '--warning')}
+                            ${statRow('Blocked', off.blocked)}
+                            ${statRow('Sanitized', off.sanitized)}
+                            ${statRow('Allowed', off.allowed)}
+                            ${statRow('Avg Latency', off.avg_latency_ms.toFixed(1) + 'ms')}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="col-md-6">
+                    <h6 class="text-muted-sm text-uppercase" style="font-size: 0.75rem; letter-spacing: 0.03em;">Protection ON (Protected)</h6>
+                    <table class="table table-sm mb-0">
+                        <tbody>
+                            ${statRow('Total Tests', on.total)}
+                            ${statRow('Attacks', on.attacks)}
+                            ${statRow('Benign', on.benign)}
+                            ${statRow('Attack Success', on.attack_success, '--success')}
+                            ${statRow('Leakage', on.leakage, '--success')}
+                            ${statRow('Blocked', on.blocked)}
+                            ${statRow('Sanitized', on.sanitized)}
+                            ${statRow('Allowed', on.allowed)}
+                            ${statRow('Avg Latency', on.avg_latency_ms.toFixed(1) + 'ms')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="alert" style="background-color: var(--success-bg); color: var(--success); border: none;">
+                <strong>Key Improvements</strong>
+                <ul class="mb-0 mt-2">
+                    <li>Attack Success: ${asrReduction} fewer successful attacks (${asrReductionPct}% reduction)</li>
+                    <li>Leakage: ${leakageReduction} fewer leakage incidents</li>
+                    <li>Processing Overhead: +${overhead.toFixed(1)}ms (${overheadPct}% increase)</li>
+                </ul>
+                <div class="mt-2" style="font-size: 0.85rem;">
+                    False positive rate isn't shown here since it needs a benign-only breakdown &mdash;
+                    see the <a href="{% url 'metrics' %}">Metrics page</a> for the accurate figure.
+                </div>
+            </div>
+
+            <div class="d-flex gap-2">
+                <a href="{% url 'metrics' %}" class="btn btn-primary"><i class="bi bi-graph-up"></i> View Full Metrics Report</a>
+                <a href="{% url 'logs' %}" class="btn btn-outline-secondary"><i class="bi bi-journal-text"></i> View Incident Logs</a>
+            </div>
+        `;
+
+        document.getElementById('comparison-results').innerHTML = html;
+    }
+
+    function resetForm() {
+        document.getElementById('progress-section').style.display = 'none';
+        document.getElementById('comparison-form').style.display = 'block';
+        document.getElementById('progress-off').style.width = '0%';
+        document.getElementById('progress-off').textContent = '0%';
+        document.getElementById('progress-on').style.width = '0%';
+        document.getElementById('progress-on').textContent = '0%';
+    }
+</script>
+{% endblock %}
+

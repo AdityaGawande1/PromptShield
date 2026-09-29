@@ -1,0 +1,309 @@
+{% extends "dashboard/base.html" %}
+{% load dashboard_extras %}
+
+{% block title %}PromptShield - Metrics Report{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1><i class="bi bi-graph-up"></i> Evaluation Metrics</h1>
+    <a href="{% url 'index' %}" class="btn btn-outline-secondary">Back to Dashboard</a>
+</div>
+
+<div class="alert alert-info">
+    <i class="bi bi-info-circle"></i> Metrics computed from incident logs. Run a <a href="{% url 'run_comparison' %}">comparison test</a> to generate data.
+</div>
+
+<!-- Attack Success Rate + False Positive Rate -->
+<div class="row mb-3 g-3">
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header"><i class="bi bi-bug"></i> Attack Success Rate</div>
+            <div class="card-body">
+                <div class="row text-center mb-3">
+                    <div class="col-6">
+                        <h2 class="mb-0" style="color: var(--danger);">{{ metrics.attack_success_rate.protection_off.attack_success_rate|percent }}%</h2>
+                        <small class="text-muted-sm">Protection OFF</small>
+                        <div class="text-muted-sm">{{ metrics.attack_success_rate.protection_off.successful_attacks }}/{{ metrics.attack_success_rate.protection_off.total_attacks }}</div>
+                    </div>
+                    <div class="col-6">
+                        <h2 class="mb-0" style="color: var(--success);">{{ metrics.attack_success_rate.protection_on.attack_success_rate|percent }}%</h2>
+                        <small class="text-muted-sm">Protection ON</small>
+                        <div class="text-muted-sm">{{ metrics.attack_success_rate.protection_on.successful_attacks }}/{{ metrics.attack_success_rate.protection_on.total_attacks }}</div>
+                    </div>
+                </div>
+                <div class="alert mb-0" style="background-color: var(--success-bg); color: var(--success); border: none;">
+                    <strong>Reduction: {{ metrics.attack_success_rate.reduction|percent }}% ({{ metrics.attack_success_rate.reduction_percent|floatformat:1 }}% relative)</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header"><i class="bi bi-shield-exclamation"></i> False Positive Rate</div>
+            <div class="card-body">
+                <div class="text-center mb-3">
+                    <h2 class="mb-0" style="color: var(--warning);">{{ metrics.false_positive_rate.false_positive_rate|percent }}%</h2>
+                    <small class="text-muted-sm">{{ metrics.false_positive_rate.false_positives }} / {{ metrics.false_positive_rate.total_benign }} benign prompts</small>
+                </div>
+                <div class="row text-center">
+                    <div class="col-4">
+                        <div style="color: var(--danger); font-weight: 600;">{{ metrics.false_positive_rate.breakdown.blocked }}</div>
+                        <small class="text-muted-sm">Blocked</small>
+                    </div>
+                    <div class="col-4">
+                        <div style="color: var(--warning); font-weight: 600;">{{ metrics.false_positive_rate.breakdown.sanitized }}</div>
+                        <small class="text-muted-sm">Sanitized</small>
+                    </div>
+                    <div class="col-4">
+                        <div style="color: var(--success); font-weight: 600;">{{ metrics.false_positive_rate.breakdown.allowed }}</div>
+                        <small class="text-muted-sm">Allowed</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Leakage Rate + Processing Overhead -->
+<div class="row mb-3 g-3">
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header"><i class="bi bi-lock"></i> Leakage Rate</div>
+            <div class="card-body">
+                <div class="row text-center mb-3">
+                    <div class="col-6">
+                        <h2 class="mb-0" style="color: var(--danger);">{{ metrics.leakage_rate.protection_off.leakage_rate|percent }}%</h2>
+                        <small class="text-muted-sm">Protection OFF</small>
+                        <div class="text-muted-sm">{{ metrics.leakage_rate.protection_off.leaked_responses }}/{{ metrics.leakage_rate.protection_off.total_responses }}</div>
+                    </div>
+                    <div class="col-6">
+                        <h2 class="mb-0" style="color: var(--success);">{{ metrics.leakage_rate.protection_on.leakage_rate|percent }}%</h2>
+                        <small class="text-muted-sm">Protection ON</small>
+                        <div class="text-muted-sm">{{ metrics.leakage_rate.protection_on.leaked_responses }}/{{ metrics.leakage_rate.protection_on.total_responses }}</div>
+                    </div>
+                </div>
+                <div class="alert mb-0" style="background-color: var(--success-bg); color: var(--success); border: none;">
+                    <strong>Reduction: {{ metrics.leakage_rate.reduction|percent }}% ({{ metrics.leakage_rate.reduction_percent|floatformat:1 }}% relative)</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header"><i class="bi bi-speedometer2"></i> Processing Overhead</div>
+            <div class="card-body">
+                <div class="row text-center mb-3">
+                    <div class="col-6">
+                        <h3 class="mb-0 text-muted-sm">{{ metrics.processing_overhead.protection_off.avg_total_latency_ms|floatformat:1 }}ms</h3>
+                        <small class="text-muted-sm">Protection OFF</small>
+                    </div>
+                    <div class="col-6">
+                        <h3 class="mb-0" style="color: var(--accent);">{{ metrics.processing_overhead.protection_on.avg_total_latency_ms|floatformat:1 }}ms</h3>
+                        <small class="text-muted-sm">Protection ON</small>
+                    </div>
+                </div>
+                <div class="alert alert-info mb-0">
+                    <strong>Overhead: +{{ metrics.processing_overhead.overhead_ms|floatformat:1 }}ms ({{ metrics.processing_overhead.overhead_percent|floatformat:1 }}%)</strong>
+                    <div class="mt-2" style="font-size: 0.82rem;">
+                        Detector: +{{ metrics.processing_overhead.detector_overhead_ms|floatformat:1 }}ms &middot;
+                        Output Guard: +{{ metrics.processing_overhead.output_guard_overhead_ms|floatformat:1 }}ms
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Per-Category Attack Success Rates -->
+<div class="row mb-3 g-3">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-bar-chart"></i> Per-Category Attack Success Rates</div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Category</th>
+                                <th>OFF: Success Rate</th>
+                                <th>ON: Success Rate</th>
+                                <th>Reduction</th>
+                                <th>OFF: Successful/Total</th>
+                                <th>ON: Successful/Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for cat, data in metrics.per_category.items %}
+                            <tr>
+                                <td><span class="badge badge-category">{{ cat }}</span></td>
+                                <td style="color: var(--danger);">{{ data.protection_off.rate|percent }}%</td>
+                                <td style="color: var(--success);">{{ data.protection_on.rate|percent }}%</td>
+                                <td style="color: var(--success); font-weight: 600;">
+                                    {{ data.protection_off.rate|sub:data.protection_on.rate|percent }}%
+                                </td>
+                                <td>{{ data.protection_off.successful }}/{{ data.protection_off.total }}</td>
+                                <td>{{ data.protection_on.successful }}/{{ data.protection_on.total }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts -->
+<div class="row mb-3 g-3">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">Attack Success Rate Comparison</div>
+            <div class="card-body"><div class="chart-container"><canvas id="asrChart"></canvas></div></div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">Leakage Rate Comparison</div>
+            <div class="card-body"><div class="chart-container"><canvas id="leakageChart"></canvas></div></div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-3 g-3">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">Processing Latency Comparison</div>
+            <div class="card-body"><div class="chart-container"><canvas id="latencyChart"></canvas></div></div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">Action Distribution (Protection ON)</div>
+            <div class="card-body"><div class="chart-container"><canvas id="actionChart"></canvas></div></div>
+        </div>
+    </div>
+</div>
+
+<!-- Export -->
+<div class="row g-3">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body d-flex gap-2">
+                <a href="{% url 'metrics_json' %}" class="btn btn-outline-primary" target="_blank">
+                    <i class="bi bi-download"></i> Export Metrics as JSON
+                </a>
+                <a href="{% url 'logs' %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-journal-text"></i> View Incident Logs
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ metrics|json_script:"metrics-data" }}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const metrics = JSON.parse(document.getElementById('metrics-data').textContent);
+        Chart.defaults.font.family = "'Inter', sans-serif";
+
+        const danger = 'rgba(216, 54, 42, 0.75)';
+        const dangerBorder = 'rgb(216, 54, 42)';
+        const success = 'rgba(28, 154, 91, 0.75)';
+        const successBorder = 'rgb(28, 154, 91)';
+
+        new Chart(document.getElementById('asrChart'), {
+            type: 'bar',
+            data: {
+                labels: ['Protection OFF', 'Protection ON'],
+                datasets: [{
+                    label: 'Attack Success Rate (%)',
+                    data: [
+                        metrics.attack_success_rate.protection_off.attack_success_rate * 100,
+                        metrics.attack_success_rate.protection_on.attack_success_rate * 100
+                    ],
+                    backgroundColor: [danger, success],
+                    borderColor: [dangerBorder, successBorder],
+                    borderWidth: 1,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: { y: { beginAtZero: true, max: 100 } },
+                plugins: { legend: { display: false } }
+            }
+        });
+
+        new Chart(document.getElementById('leakageChart'), {
+            type: 'bar',
+            data: {
+                labels: ['Protection OFF', 'Protection ON'],
+                datasets: [{
+                    label: 'Leakage Rate (%)',
+                    data: [
+                        metrics.leakage_rate.protection_off.leakage_rate * 100,
+                        metrics.leakage_rate.protection_on.leakage_rate * 100
+                    ],
+                    backgroundColor: [danger, success],
+                    borderColor: [dangerBorder, successBorder],
+                    borderWidth: 1,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: { y: { beginAtZero: true, max: 100 } },
+                plugins: { legend: { display: false } }
+            }
+        });
+
+        new Chart(document.getElementById('latencyChart'), {
+            type: 'bar',
+            data: {
+                labels: ['Protection OFF', 'Protection ON'],
+                datasets: [{
+                    label: 'Avg Total Latency (ms)',
+                    data: [
+                        metrics.processing_overhead.protection_off.avg_total_latency_ms,
+                        metrics.processing_overhead.protection_on.avg_total_latency_ms
+                    ],
+                    backgroundColor: ['rgba(107, 114, 128, 0.6)', 'rgba(79, 95, 224, 0.75)'],
+                    borderColor: ['rgb(107, 114, 128)', 'rgb(79, 95, 224)'],
+                    borderWidth: 1,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: { y: { beginAtZero: true } },
+                plugins: { legend: { display: false } }
+            }
+        });
+
+        const fpr = metrics.false_positive_rate;
+        new Chart(document.getElementById('actionChart'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Allowed', 'Sanitized', 'Blocked'],
+                datasets: [{
+                    data: [fpr.breakdown.allowed, fpr.breakdown.sanitized, fpr.breakdown.blocked],
+                    backgroundColor: [success, 'rgba(194, 118, 11, 0.75)', danger],
+                    borderColor: [successBorder, 'rgb(194, 118, 11)', dangerBorder],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom' } }
+            }
+        });
+    });
+</script>
+{% endblock %}
+

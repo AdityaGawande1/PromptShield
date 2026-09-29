@@ -1,0 +1,73 @@
+{% extends "dashboard/base.html" %}
+
+{% block title %}PromptShield - About{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1><i class="bi bi-info-circle"></i> About This Project</h1>
+    <a href="{% url 'index' %}" class="btn btn-outline-secondary">Back to Dashboard</a>
+</div>
+
+<div class="row g-3">
+    <div class="col-md-7">
+        <div class="card mb-3">
+            <div class="card-header">What PromptShield Does</div>
+            <div class="card-body">
+                <p>PromptShield is an automated security-testing framework for LLM and agent applications.
+                It fires a curated set of adversarial prompts at a sample chatbot, applies a lightweight
+                detection-and-blocking layer in front of it, logs every incident, and measures how effective
+                that protection is using four evaluation metrics.</p>
+                <p class="mb-0 text-muted-sm">Built as an academic mini project &mdash; scoped as a red-teaming and
+                detection prototype, not a production security product.</p>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">How It Works</div>
+            <div class="card-body">
+                <ol class="mb-0">
+                    <li class="mb-2"><strong>Target App</strong> &mdash; a WidgetCorp customer-support chatbot with a database query tool and a small document-retrieval (RAG) system.</li>
+                    <li class="mb-2"><strong>Detection Layer</strong> &mdash; regex/keyword rules, embedding-similarity matching against known attacks, and an optional LLM-judge call.</li>
+                    <li class="mb-2"><strong>Output Guard</strong> &mdash; scans the chatbot's response for leaked secrets, PII, or unsafe content before it reaches the user.</li>
+                    <li class="mb-0"><strong>Incident Log &amp; Metrics</strong> &mdash; every request is logged, and results are compared with protection on vs. off.</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-5">
+        <div class="card mb-3">
+            <div class="card-header">Project Facts</div>
+            <div class="card-body">
+                <table class="table table-sm mb-0">
+                    <tbody>
+                        <tr><td class="text-muted-sm">Target App</td><td>WidgetCorp Chatbot + DB Tool + RAG</td></tr>
+                        <tr><td class="text-muted-sm">Attack Categories</td><td>8 (5 deep + 3 light coverage)</td></tr>
+                        <tr><td class="text-muted-sm">Attack Prompts</td><td>60 curated prompts</td></tr>
+                        <tr><td class="text-muted-sm">Benign Prompts</td><td>40 normal queries</td></tr>
+                        <tr><td class="text-muted-sm">Detection</td><td>Rules + Embeddings + Optional LLM Judge</td></tr>
+                        <tr><td class="text-muted-sm">Output Guard</td><td>Secret / PII / Unsafe-content checks</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">Attack Categories Covered</div>
+            <div class="card-body">
+                <div class="d-flex flex-wrap gap-2">
+                    <span class="badge badge-category">Direct Prompt Injection</span>
+                    <span class="badge badge-category">Indirect Prompt Injection</span>
+                    <span class="badge badge-category">Data Leakage</span>
+                    <span class="badge badge-category">Jailbreak</span>
+                    <span class="badge badge-category">Unsafe Output Generation</span>
+                    <span class="badge badge-category">Tool Misuse</span>
+                    <span class="badge badge-category">Excessive Permissions</span>
+                    <span class="badge badge-category">Malicious Retrieved Documents</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}PromptShield{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>
+    <style>
+        :root {
+            --bg: #F4F5F7;
+            --surface: #FFFFFF;
+            --sidebar-bg: #14171F;
+            --sidebar-text: #9CA3B0;
+            --sidebar-text-active: #FFFFFF;
+            --sidebar-border: #262B36;
+            --text-primary: #14171F;
+            --text-muted: #6B7280;
+            --border: #E4E6EC;
+            --accent: #4F5FE0;
+            --accent-hover: #3F4FCB;
+            --success: #1C9A5B;
+            --success-bg: #E8F7EF;
+            --warning: #C2760B;
+            --warning-bg: #FCF1DE;
+            --danger: #D8362A;
+            --danger-bg: #FBEAE8;
+            --radius: 10px;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg);
+            color: var(--text-primary);
+            font-size: 14.5px;
+        }
+
+        code, .mono, .log-entry { font-family: 'JetBrains Mono', 'SFMono-Regular', monospace; }
+
+        h1, h2, h3, h4, h5, h6 {
+            font-weight: 600;
+            letter-spacing: -0.01em;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            min-height: 100vh;
+            background-color: var(--sidebar-bg);
+            border-right: none;
+        }
+        .sidebar-brand {
+            padding: 1.5rem 1.25rem 1.25rem;
+            border-bottom: 1px solid var(--sidebar-border);
+        }
+        .sidebar-brand h4 {
+            color: #FFFFFF;
+            font-size: 1.05rem;
+            font-weight: 700;
+            margin-bottom: 0.15rem;
+        }
+        .sidebar-brand small { color: var(--sidebar-text); font-size: 0.75rem; }
+        .sidebar .nav-link {
+            color: var(--sidebar-text);
+            padding: 0.6rem 1rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            margin-bottom: 2px;
+            transition: background-color 0.15s ease, color 0.15s ease;
+        }
+        .sidebar .nav-link i { width: 1.1rem; display: inline-block; }
+        .sidebar .nav-link:hover { background-color: #1D2029; color: #FFFFFF; }
+        .sidebar .nav-link.active { background-color: var(--accent); color: #FFFFFF; }
+        .sidebar-footer {
+            border-top: 1px solid var(--sidebar-border) !important;
+            color: var(--sidebar-text);
+        }
+
+        /* Cards */
+        .card {
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: none;
+        }
+        .card-header {
+            background-color: var(--surface);
+            border-bottom: 1px solid var(--border);
+            font-weight: 600;
+            padding: 0.9rem 1.1rem;
+        }
+        .card-header h5, .card-header h6 { margin-bottom: 0; font-size: 0.95rem; }
+        .card-body { padding: 1.1rem; }
+        .metric-card { transition: border-color 0.15s ease; }
+        .metric-card:hover { border-color: var(--accent); }
+
+        /* Status badges — consistent semantic colors regardless of Bootstrap defaults */
+        .badge { font-weight: 500; padding: 0.35em 0.65em; border-radius: 6px; }
+        .badge-category {
+            font-size: 0.72rem;
+            font-weight: 500;
+            background-color: #EEF0F5 !important;
+            color: var(--text-muted) !important;
+        }
+        .status-allowed { background-color: var(--success-bg); color: var(--success); }
+        .status-sanitized { background-color: var(--warning-bg); color: var(--warning); }
+        .status-blocked { background-color: var(--danger-bg); color: var(--danger); }
+        .status-on { background-color: var(--success-bg); color: var(--success); }
+        .status-off { background-color: #EEF0F5; color: var(--text-muted); }
+
+        /* Buttons */
+        .btn { border-radius: 8px; font-weight: 500; font-size: 0.9rem; }
+        .btn-primary { background-color: var(--accent); border-color: var(--accent); }
+        .btn-primary:hover { background-color: var(--accent-hover); border-color: var(--accent-hover); }
+        .btn-outline-primary { color: var(--accent); border-color: var(--accent); }
+        .btn-outline-primary:hover { background-color: var(--accent); border-color: var(--accent); }
+
+        .log-entry {
+            font-size: 0.8rem;
+            max-height: 100px;
+            overflow-y: auto;
+            color: var(--text-muted);
+        }
+        .chart-container { position: relative; height: 280px; }
+
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+        .page-header h1 {
+            font-size: 1.4rem;
+            margin-bottom: 0;
+        }
+        .text-muted-sm { color: var(--text-muted); font-size: 0.85rem; }
+
+        table { font-size: 0.88rem; }
+        .table thead th {
+            font-weight: 600;
+            font-size: 0.78rem;
+            text-transform: none;
+            color: var(--text-muted);
+            border-bottom-width: 1px;
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <nav class="col-md-2 sidebar p-0 d-flex flex-column justify-content-between">
+                <div>
+                    <div class="sidebar-brand">
+                        <h4><i class="bi bi-shield-lock"></i> PromptShield</h4>
+                        <small>LLM Red-Teaming Firewall</small>
+                    </div>
+                    <ul class="nav flex-column p-3">
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.path == '/' %}active{% endif %}" href="{% url 'index' %}">
+                                <i class="bi bi-house-door"></i> Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if 'run-tests' in request.path %}active{% endif %}" href="{% url 'run_tests' %}">
+                                <i class="bi bi-play-circle"></i> Run Tests
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if 'playground' in request.path %}active{% endif %}" href="{% url 'playground' %}">
+                                <i class="bi bi-terminal"></i> Playground
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if 'run-comparison' in request.path %}active{% endif %}" href="{% url 'run_comparison' %}">
+                                <i class="bi bi-arrow-left-right"></i> Comparison
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if 'logs' in request.path %}active{% endif %}" href="{% url 'logs' %}">
+                                <i class="bi bi-journal-text"></i> Incident Logs
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if 'metrics' in request.path %}active{% endif %}" href="{% url 'metrics' %}">
+                                <i class="bi bi-graph-up"></i> Metrics
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if 'about' in request.path %}active{% endif %}" href="{% url 'about' %}">
+                                <i class="bi bi-info-circle"></i> About
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+                <div class="p-3 sidebar-footer">
+                    <small><i class="bi bi-mortarboard"></i> Academic prototype &mdash; not for production use</small>
+                </div>
+            </nav>
+
+            <!-- Main Content -->
+            <main class="col-md-10 p-4">
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+
+                {% block content %}{% endblock %}
+            </main>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
+

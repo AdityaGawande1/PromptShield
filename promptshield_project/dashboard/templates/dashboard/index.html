@@ -1,0 +1,200 @@
+{% extends "dashboard/base.html" %}
+
+{% block title %}PromptShield - Home{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1><i class="bi bi-shield-lock"></i> PromptShield Dashboard</h1>
+        <p class="text-muted-sm mb-0">Automated security-testing framework for LLM and agent applications.</p>
+    </div>
+    <span class="badge status-sanitized">Academic Prototype</span>
+</div>
+
+<!-- Quick Stats -->
+<div class="row mb-4 g-3">
+    <div class="col-md-3">
+        <div class="card metric-card">
+            <div class="card-body text-center">
+                <h2 class="mb-0" id="stat-total">&ndash;</h2>
+                <p class="text-muted-sm mb-0">Total Tests Run</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card metric-card">
+            <div class="card-body text-center">
+                <h2 class="mb-0" style="color: var(--danger);" id="stat-attacks">&ndash;</h2>
+                <p class="text-muted-sm mb-0">Attack Prompts</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card metric-card">
+            <div class="card-body text-center">
+                <h2 class="mb-0" style="color: var(--success);" id="stat-blocked">&ndash;</h2>
+                <p class="text-muted-sm mb-0">Blocked</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card metric-card">
+            <div class="card-body text-center">
+                <h2 class="mb-0" style="color: var(--warning);" id="stat-leakage">&ndash;</h2>
+                <p class="text-muted-sm mb-0">Leakage Detected</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row mb-4 g-3">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-play-circle"></i> Quick Actions
+            </div>
+            <div class="card-body">
+                <div class="row g-2">
+                    <div class="col-md-6">
+                        <a href="{% url 'run_comparison' %}" class="btn btn-primary w-100 py-2">
+                            <i class="bi bi-arrow-left-right"></i> Run Full Comparison (OFF vs ON)
+                        </a>
+                    </div>
+                    <div class="col-md-6">
+                        <a href="{% url 'run_tests' %}" class="btn btn-outline-primary w-100 py-2">
+                            <i class="bi bi-play-circle"></i> Run Test Suite (Protection ON)
+                        </a>
+                    </div>
+                    <div class="col-md-6">
+                        <a href="{% url 'logs' %}" class="btn btn-outline-secondary w-100 py-2">
+                            <i class="bi bi-journal-text"></i> View Incident Logs
+                        </a>
+                    </div>
+                    <div class="col-md-6">
+                        <a href="{% url 'metrics' %}" class="btn btn-outline-secondary w-100 py-2">
+                            <i class="bi bi-graph-up"></i> View Metrics Report
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Activity -->
+<div class="row g-3">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-clock-history"></i> Recent Test Runs</span>
+                <a href="{% url 'logs' %}" class="btn btn-sm btn-outline-primary">View All</a>
+            </div>
+            <div class="card-body">
+                <div id="recent-activity">
+                    <p class="text-muted-sm mb-0">Loading recent activity...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="text-center mt-4">
+    <a href="{% url 'about' %}" class="text-muted-sm text-decoration-none">
+        <i class="bi bi-info-circle"></i> About this project &rarr;
+    </a>
+</div>
+
+<div class="text-center mt-4">
+    <a href="{% url 'about' %}" class="text-muted-sm text-decoration-none">
+        <i class="bi bi-info-circle"></i> About this project &rarr;
+    </a>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        loadStats();
+        loadRecentActivity();
+    });
+
+    function loadStats() {
+        fetch('/api/incidents/?limit=1000')
+            .then(response => response.json())
+            .then(data => {
+                const incidents = data.incidents;
+                document.getElementById('stat-total').textContent = incidents.length;
+
+                const attacks = incidents.filter(i => i.expected_label === 'attack');
+                document.getElementById('stat-attacks').textContent = attacks.length;
+
+                const blocked = incidents.filter(i => i.action_taken === 'blocked');
+                document.getElementById('stat-blocked').textContent = blocked.length;
+
+                const leakage = incidents.filter(i => i.leakage_detected);
+                document.getElementById('stat-leakage').textContent = leakage.length;
+            })
+            .catch(err => console.error('Failed to load stats:', err));
+    }
+
+    function loadRecentActivity() {
+        fetch('/api/incidents/?limit=10')
+            .then(response => response.json())
+            .then(data => {
+                const incidents = data.incidents;
+                const container = document.getElementById('recent-activity');
+
+                if (incidents.length === 0) {
+                    container.innerHTML = '<p class="text-muted-sm mb-0">No test runs yet. <a href="{% url "run_comparison" %}">Run a comparison test</a> to get started.</p>';
+                    return;
+                }
+
+                let html = '<div class="table-responsive"><table class="table table-sm table-hover mb-0">';
+                html += '<thead><tr><th>Time</th><th>Category</th><th>Label</th><th>Protection</th><th>Action</th><th>Attack Success</th><th>Leakage</th><th>Latency</th></tr></thead><tbody>';
+
+                incidents.forEach(inc => {
+                    const time = new Date(inc.timestamp).toLocaleString();
+                    const protectionBadge = inc.protection_enabled ?
+                        '<span class="badge status-on">ON</span>' :
+                        '<span class="badge status-off">OFF</span>';
+                    const actionBadge = getActionBadge(inc.action_taken);
+                    const successBadge = inc.attack_success ?
+                        '<span class="badge status-blocked">Yes</span>' :
+                        '<span class="badge status-allowed">No</span>';
+                    const leakageBadge = inc.leakage_detected ?
+                        '<span class="badge status-sanitized">Yes</span>' :
+                        '<span class="badge status-allowed">No</span>';
+
+                    html += `<tr>
+                        <td>${time}</td>
+                        <td><span class="badge badge-category">${inc.category}</span></td>
+                        <td>${inc.expected_label}</td>
+                        <td>${protectionBadge}</td>
+                        <td>${actionBadge}</td>
+                        <td>${successBadge}</td>
+                        <td>${leakageBadge}</td>
+                        <td>${inc.total_latency_ms.toFixed(1)}ms</td>
+                    </tr>`;
+                });
+
+                html += '</tbody></table></div>';
+                container.innerHTML = html;
+            })
+            .catch(err => {
+                console.error('Failed to load recent activity:', err);
+                document.getElementById('recent-activity').innerHTML = '<p class="text-danger mb-0">Failed to load activity.</p>';
+            });
+    }
+
+    function getActionBadge(action) {
+        switch(action) {
+            case 'blocked': return '<span class="badge status-blocked">Blocked</span>';
+            case 'sanitized': return '<span class="badge status-sanitized">Sanitized</span>';
+            case 'allowed': return '<span class="badge status-allowed">Allowed</span>';
+            default: return `<span class="badge badge-category">${action}</span>`;
+        }
+    }
+</script>
+{% endblock %}
+

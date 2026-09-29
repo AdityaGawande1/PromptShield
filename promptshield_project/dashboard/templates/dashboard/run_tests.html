@@ -1,0 +1,216 @@
+{% extends "dashboard/base.html" %}
+
+{% block title %}PromptShield - Run Tests{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1><i class="bi bi-play-circle"></i> Run Test Suite</h1>
+    <a href="{% url 'index' %}" class="btn btn-outline-secondary">Back to Dashboard</a>
+</div>
+
+<div class="row g-3">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">Test Configuration</div>
+            <div class="card-body">
+                <form id="test-form" method="post">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" name="protection" id="protection" checked>
+                            <label class="form-check-label" for="protection">Enable Protection (Detection + Output Guard)</label>
+                        </div>
+                        <div class="form-text">When enabled, the detection pipeline and output guard will process each prompt.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="max_prompts" class="form-label">Max Prompts per Category (optional)</label>
+                        <input type="number" class="form-control" name="max_prompts" id="max_prompts" min="1" placeholder="Leave empty for all prompts">
+                        <div class="form-text">Useful for quick testing. Total prompts: 60 attack + 40 benign = 100.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" name="clear" id="clear">
+                            <label class="form-check-label" for="clear">Clear existing logs before running</label>
+                        </div>
+                        <div class="form-text">Warning: This will delete all previous test results.</div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" id="run-btn">
+                        <i class="bi bi-play-fill"></i> Run Test Suite
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">Prompt Summary</div>
+            <div class="card-body">
+                <table class="table table-sm mb-0">
+                    <thead>
+                        <tr><th>Category</th><th>Count</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Direct Prompt Injection</td><td>10</td></tr>
+                        <tr><td>Indirect Prompt Injection</td><td>10</td></tr>
+                        <tr><td>Data Leakage</td><td>10</td></tr>
+                        <tr><td>Jailbreak</td><td>10</td></tr>
+                        <tr><td>Unsafe Output Generation</td><td>10</td></tr>
+                        <tr><td>Tool Misuse</td><td>5</td></tr>
+                        <tr><td>Excessive Permissions</td><td>3</td></tr>
+                        <tr><td>Malicious Retrieved Documents</td><td>2</td></tr>
+                        <tr><td>Base64 Injection</td><td>6</td></tr>
+                        <tr><td>Multilingual Injection</td><td>6</td></tr>
+                        <tr><td>Roleplay Social Engineering</td><td>6</td></tr>
+                        <tr class="table-active"><td><strong>Total Attacks</strong></td><td><strong>78</strong></td></tr>
+                        <tr><td>Benign</td><td>40</td></tr>
+                        <tr class="table-active"><td><strong>Grand Total</strong></td><td><strong>118</strong></td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Results Section -->
+<div class="row mt-3 g-3" id="results-section" style="display: none;">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">Test Results</div>
+            <div class="card-body">
+                <div class="row g-2 mb-3" id="summary-cards"></div>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover" id="results-table">
+                        <thead>
+                            <tr>
+                                <th>Category</th>
+                                <th>Total</th>
+                                <th>Blocked</th>
+                                <th>Sanitized</th>
+                                <th>Allowed</th>
+                                <th>Attack Success</th>
+                                <th>Leakage</th>
+                                <th>Avg Latency</th>
+                            </tr>
+                        </thead>
+                        <tbody id="results-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Progress Section -->
+<div class="row mt-3 g-3" id="progress-section" style="display: none;">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">Running Tests&hellip;</div>
+            <div class="card-body">
+                <div class="progress mb-3" style="height: 26px;">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated" id="progress-bar" role="progressbar" style="width: 0%">0%</div>
+                </div>
+                <p id="progress-text" class="mb-1">Initializing...</p>
+                <div class="text-muted-sm" id="current-prompt"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.getElementById('test-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const formData = new FormData(this);
+        const protection = formData.get('protection') === 'on';
+        const maxPrompts = formData.get('max_prompts') || null;
+        const clear = formData.get('clear') === 'on';
+
+        document.getElementById('test-form').style.display = 'none';
+        document.getElementById('results-section').style.display = 'none';
+        document.getElementById('progress-section').style.display = 'block';
+
+        try {
+            updateProgress(10, 'Starting test suite...');
+
+            const response = await fetch('{% url "run_tests" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: new URLSearchParams({
+                    'protection': protection ? 'on' : '',
+                    'max_prompts': maxPrompts || '',
+                    'clear': clear ? 'on' : '',
+                    'csrfmiddlewaretoken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                })
+            });
+
+            updateProgress(100, 'Test suite complete!');
+
+            const data = await response.json();
+
+            if (data.success) {
+                showResults(data.results);
+            } else {
+                alert('Test failed: ' + (data.error || 'Unknown error'));
+                resetForm();
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Error running tests: ' + err.message);
+            resetForm();
+        }
+    });
+
+    function updateProgress(percent, text) {
+        document.getElementById('progress-bar').style.width = percent + '%';
+        document.getElementById('progress-bar').textContent = percent + '%';
+        document.getElementById('progress-text').textContent = text;
+    }
+
+    function showResults(results) {
+        document.getElementById('progress-section').style.display = 'none';
+        document.getElementById('results-section').style.display = 'block';
+
+        const card = (colorVar, value, label) => `
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body py-3">
+                        <h3 class="mb-0" style="color: var(${colorVar});">${value}</h3>
+                        <small class="text-muted-sm">${label}</small>
+                    </div>
+                </div>
+            </div>`;
+
+        const summaryHtml =
+            card('--text-primary', results.total, 'Total Tests') +
+            card('--danger', results.blocked, 'Blocked') +
+            card('--warning', results.sanitized, 'Sanitized') +
+            card('--success', results.allowed, 'Allowed') +
+            card(results.attack_success > 0 ? '--danger' : '--success', results.attack_success, 'Attack Success') +
+            card(results.leakage > 0 ? '--warning' : '--success', results.leakage, 'Leakage Detected') +
+            card('--accent', results.avg_latency_ms.toFixed(1) + 'ms', 'Avg Latency') +
+            card('--text-muted', results.errors, 'Errors');
+
+        document.getElementById('summary-cards').innerHTML = summaryHtml;
+
+        document.getElementById('results-body').innerHTML = `
+            <tr><td colspan="8" class="text-center text-muted-sm">
+                Detailed per-category results are in <a href="{% url 'logs' %}">Incident Logs</a> and <a href="{% url 'metrics' %}">Metrics</a>.
+            </td></tr>
+        `;
+    }
+
+    function resetForm() {
+        document.getElementById('progress-section').style.display = 'none';
+        document.getElementById('test-form').style.display = 'block';
+    }
+</script>
+{% endblock %}

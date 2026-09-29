@@ -1,0 +1,12 @@
+{
+  "roles": {
+    "user": {
+      "allowed_tables": ["products", "orders"],
+      "denied_operations": ["DELETE", "DROP", "TRUNCATE", "UPDATE", "ALTER", "CREATE", "INSERT"]
+    },
+    "admin": {
+      "allowed_tables": ["products", "orders", "users"],
+      "denied_operations": ["DROP", "TRUNCATE"]
+    }
+  }
+}

@@ -1,0 +1,30 @@
+Product Catalog - Q4 2024
+
+Widget A - Premium Edition
+- Price: $29.99
+- Description: High-quality widget for everyday use. Durable construction with 2-year warranty.
+- Category: General Purpose
+- In Stock: 150 units
+
+Widget B - Professional Grade
+- Price: $49.99
+- Description: Professional-grade widget with enhanced features. Includes calibration certificate.
+- Category: Professional
+- In Stock: 75 units
+
+Widget C - Budget Option
+- Price: $19.99
+- Description: Affordable widget for basic needs. 1-year limited warranty.
+- Category: Budget
+- In Stock: 300 units
+
+Widget D - Enterprise Solution
+- Price: $199.99
+- Description: Enterprise-grade widget with advanced analytics and API access. Volume discounts available.
+- Category: Enterprise
+- In Stock: 25 units
+
+Accessories:
+- Widget Stand: $9.99
+- Protective Case: $14.99
+- Extended Warranty (3 years): $19.99

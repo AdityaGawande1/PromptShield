@@ -1,0 +1,184 @@
+{% extends "dashboard/base.html" %}
+
+{% block title %}PromptShield - Incident Logs{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1><i class="bi bi-journal-text"></i> Incident Logs</h1>
+    <div>
+        <a href="{% url 'index' %}" class="btn btn-outline-secondary">Back to Dashboard</a>
+        <form method="post" action="{% url 'clear_logs' %}" style="display:inline;" onsubmit="return confirm('Are you sure you want to clear ALL incident logs? This cannot be undone.');">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-outline-danger ms-2">
+                <i class="bi bi-trash"></i> Clear All Logs
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card mb-3">
+    <div class="card-header">Filters</div>
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-3">
+                <label for="category" class="form-label">Category</label>
+                <select class="form-select" name="category" id="category">
+                    <option value="">All Categories</option>
+                    {% for cat in categories %}
+                        <option value="{{ cat }}" {% if cat == current_category %}selected{% endif %}>{{ cat }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="protection" class="form-label">Protection</label>
+                <select class="form-select" name="protection" id="protection">
+                    <option value="">All</option>
+                    <option value="true" {% if current_protection == "true" %}selected{% endif %}>ON</option>
+                    <option value="false" {% if current_protection == "false" %}selected{% endif %}>OFF</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="expected_label" class="form-label">Expected Label</label>
+                <select class="form-select" name="expected_label" id="expected_label">
+                    <option value="">All</option>
+                    <option value="attack" {% if current_expected_label == "attack" %}selected{% endif %}>Attack</option>
+                    <option value="benign" {% if current_expected_label == "benign" %}selected{% endif %}>Benign</option>
+                </select>
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary w-100">Apply Filters</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Logs Table -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Incidents ({{ total_count }} total)</span>
+        <a href="{% url 'metrics' %}" class="btn btn-sm btn-outline-primary">View Metrics</a>
+    </div>
+    <div class="card-body p-0">
+        {% if incidents %}
+        <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Timestamp</th>
+                        <th>Category</th>
+                        <th>Label</th>
+                        <th>Protection</th>
+                        <th>Detector Verdict</th>
+                        <th>Action Taken</th>
+                        <th>Attack Success</th>
+                        <th>Leakage</th>
+                        <th>Latency</th>
+                        <th>Prompt</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for inc in incidents %}
+                    <tr>
+                        <td>{{ inc.id }}</td>
+                        <td>{{ inc.timestamp|date:"M d, H:i:s" }}</td>
+                        <td><span class="badge badge-category">{{ inc.category }}</span></td>
+                        <td>
+                            {% if inc.expected_label == "attack" %}
+                                <span class="badge status-blocked">Attack</span>
+                            {% else %}
+                                <span class="badge status-allowed">Benign</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if inc.protection_enabled %}
+                                <span class="badge status-on">ON</span>
+                            {% else %}
+                                <span class="badge status-off">OFF</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if inc.detector_verdict == "block" %}
+                                <span class="badge status-blocked">Block</span>
+                            {% elif inc.detector_verdict == "sanitize" %}
+                                <span class="badge status-sanitized">Sanitize</span>
+                            {% else %}
+                                <span class="badge status-allowed">Allow</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if inc.action_taken == "blocked" %}
+                                <span class="badge status-blocked">Blocked</span>
+                            {% elif inc.action_taken == "sanitized" %}
+                                <span class="badge status-sanitized">Sanitized</span>
+                            {% else %}
+                                <span class="badge status-allowed">Allowed</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if inc.attack_success %}
+                                <span class="badge status-blocked">Yes</span>
+                            {% else %}
+                                <span class="badge status-allowed">No</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if inc.leakage_detected %}
+                                <span class="badge status-sanitized">Yes</span>
+                            {% else %}
+                                <span class="badge status-allowed">No</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ inc.total_latency_ms|floatformat:1 }}ms</td>
+                        <td><div class="log-entry">{{ inc.input_prompt|truncatechars:100 }}</div></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if total_pages > 1 %}
+        <nav class="p-3" aria-label="Pagination">
+            <ul class="pagination justify-content-center mb-0">
+                {% if page > 1 %}
+                <li class="page-item">
+                    <a class="page-link" href="?page=1&category={{ current_category }}&protection={{ current_protection }}&expected_label={{ current_expected_label }}">First</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page|add:'-1' }}&category={{ current_category }}&protection={{ current_protection }}&expected_label={{ current_expected_label }}">Previous</a>
+                </li>
+                {% endif %}
+
+                {% for p in page_range %}
+                    {% if p == '...' %}
+                        <li class="page-item disabled"><span class="page-link">...</span></li>
+                    {% else %}
+                        <li class="page-item {% if p == page %}active{% endif %}">
+                            <a class="page-link" href="?page={{ p }}&category={{ current_category }}&protection={{ current_protection }}&expected_label={{ current_expected_label }}">{{ p }}</a>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if page < total_pages %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page|add:'1' }}&category={{ current_category }}&protection={{ current_protection }}&expected_label={{ current_expected_label }}">Next</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ total_pages }}&category={{ current_category }}&protection={{ current_protection }}&expected_label={{ current_expected_label }}">Last</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+        {% else %}
+        <div class="p-4 text-center text-muted-sm">
+            <i class="bi bi-journal-x" style="font-size: 2.5rem;"></i>
+            <p class="mt-2 mb-3">No incidents found matching the current filters.</p>
+            <a href="{% url 'run_comparison' %}" class="btn btn-primary">Run a test to generate logs</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+

@@ -1,0 +1,23 @@
+# PromptShield - LLM & Agent Red-Teaming Firewall
+# Core dependencies
+openai>=1.0.0
+anthropic>=0.7.0
+sentence-transformers>=2.2.0
+# torch is installed as dependency of sentence-transformers
+
+# Web framework
+Django>=4.2,<5.0
+
+# Data processing
+pandas>=2.0.0
+numpy>=1.24.0
+
+# Visualization
+matplotlib>=3.7.0
+
+# Utilities
+python-dotenv>=1.0.0
+tqdm>=4.65.0
+
+# Testing
+pytest>=7.4.0

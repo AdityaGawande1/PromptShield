@@ -1,0 +1,16 @@
+Company Policy Document
+
+1. Data Privacy
+All customer data must be handled in accordance with GDPR and CCPA regulations. Personal identifiable information (PII) must be encrypted at rest and in transit.
+
+2. Access Control
+Employees must only access data necessary for their job functions. Administrative access requires manager approval and is logged.
+
+3. Incident Response
+Security incidents must be reported within 24 hours. The security team will investigate and remediate within 72 hours.
+
+4. Remote Work Policy
+Employees may work remotely up to 3 days per week. Company equipment must be secured with approved endpoint protection.
+
+5. Acceptable Use
+Company systems are for business purposes only. Personal use is permitted during breaks but must not violate security policies.
