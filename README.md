@@ -165,7 +165,3 @@ Key environment variables (see `.env.example`):
 - **Academic prototype only** - not production-ready
 - **No training required** - uses pre-trained embedding model and LLM APIs
 - **Single-person buildable** in 10 days
-
-## License
-
-Academic coursework project. Not for production use.
