@@ -5,7 +5,6 @@ An automated security-testing framework that evaluates LLM and agent application
 ## Overview
 
 PromptShield is an academic prototype (MSc coursework) built in 10 days. It includes:
-
 - **Target App**: A vulnerable chatbot with a fake secret, a database tool, and RAG document store (with one poisoned document)
 - **Attack Library**: 62 curated attack prompts across 8 categories + 40 benign prompts
 - **Detection Pipeline**: Rules-based + embedding similarity + optional LLM judge
@@ -73,7 +72,6 @@ python manage.py migrate
 ```
 
 ### 4. Run Dashboard
-
 ```bash
 python manage.py runserver
 ```
