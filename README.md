@@ -163,5 +163,5 @@ Key environment variables (see `.env.example`):
 
 - **Never uses real credentials** - only fake markers like `FAKE_SECRET_KEY_123`
 - **Academic prototype only** - not production-ready
-- **No training required** - uses pre-trained embedding model and LLM APIs
+- **No training required** - uses pre-trained embedding model and LLM APIs for the best results
 - **Single-person buildable** 
